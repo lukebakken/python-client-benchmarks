@@ -5,6 +5,8 @@ name = "pypi"
 
 [packages]
 pika = "*"
+aio-pika = "*"
+aiorabbit = "*"
 
 [dev-packages]
 
