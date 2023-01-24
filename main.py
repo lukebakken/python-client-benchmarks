@@ -15,7 +15,9 @@ def pika_publish(host, port, body, count):
     channel = conn.channel()
     channel.queue_declare(queue=qname, auto_delete=True, exclusive=True)
     for _ in range(1, count):
-        channel.basic_publish(exchange="", routing_key=qname, body=body)
+        channel.basic_publish(
+            exchange="", routing_key=qname, body=body, mandatory=False
+        )
     channel.close()
     conn.close()
 
@@ -31,11 +33,13 @@ def aio_pika_publish(host, port, body, count):
         connection: aio_pika.RobustConnection = await aio_pika.connect_robust(
             host=host, port=port, loop=loop
         )
-        channel: aio_pika.abc.AbstractChannel = await connection.channel()
+        channel: aio_pika.abc.AbstractChannel = await connection.channel(publisher_confirms=False)
         q = await channel.declare_queue(name=qname, auto_delete=True, exclusive=True)
         aio_msg = aio_pika.Message(body=body)
         for _ in range(1, count):
-            await channel.default_exchange.publish(aio_msg, routing_key=q.name)
+            await channel.default_exchange.publish(
+                aio_msg, routing_key=q.name, mandatory=False
+            )
         await channel.close()
         await connection.close()
 
@@ -56,7 +60,9 @@ def aiorabbit_publish(host, port, body, count):
             # await client.confirm_select()
             await client.queue_declare(queue=qname, auto_delete=True, exclusive=True)
             for _ in range(1, count):
-                await client.publish(exchange="", routing_key=qname, message_body=body)
+                await client.publish(
+                    exchange="", routing_key=qname, message_body=body, mandatory=False
+                )
 
     loop = asyncio.new_event_loop()
     loop.run_until_complete(do_publish(body, count))
@@ -79,8 +85,11 @@ def kombu_publish(host, port, body, count):
         producer = Producer(connection, exchange=exchange, routing_key=qname)
         for _ in range(1, count):
             producer.publish(
-                body, content_type="application/octet-stream", content_encoding="binary",
-                delivery_mode=1
+                body,
+                content_type="application/octet-stream",
+                content_encoding="binary",
+                delivery_mode=1,
+                mandatory=False,
             )
 
 
