@@ -120,21 +120,21 @@ args = parser.parse_args()
 
 body = random.randbytes(args.msgsize)
 
-## pika_func = functools.partial(pika_publish, args.host, args.port, body, args.msgcount)
-## t = timeit.timeit(pika_func, number=1)
-## print("pika: publishing {0} messages took {1} seconds".format(args.msgcount, t))
-##
-## aio_pika_func = functools.partial(
-##     aio_pika_publish, args.host, args.port, body, args.msgcount
-## )
-## t = timeit.timeit(aio_pika_func, number=1)
-## print("aio-pika: publishing {0} messages took {1} seconds".format(args.msgcount, t))
-##
-## aiorabbit_func = functools.partial(
-##     aiorabbit_publish, args.host, args.port, body, args.msgcount
-## )
-## t = timeit.timeit(aiorabbit_func, number=1)
-## print("aiorabbit: publishing {0} messages took {1} seconds".format(args.msgcount, t))
+pika_func = functools.partial(pika_publish, args.host, args.port, body, args.msgcount)
+t = timeit.timeit(pika_func, number=1)
+print("pika: publishing {0} messages took {1} seconds".format(args.msgcount, t))
+
+aio_pika_func = functools.partial(
+    aio_pika_publish, args.host, args.port, body, args.msgcount
+)
+t = timeit.timeit(aio_pika_func, number=1)
+print("aio-pika: publishing {0} messages took {1} seconds".format(args.msgcount, t))
+
+aiorabbit_func = functools.partial(
+    aiorabbit_publish, args.host, args.port, body, args.msgcount
+)
+t = timeit.timeit(aiorabbit_func, number=1)
+print("aiorabbit: publishing {0} messages took {1} seconds".format(args.msgcount, t))
 
 kombu_func = functools.partial(kombu_publish, args.host, args.port, body, args.msgcount)
 t = timeit.timeit(kombu_func, number=1)
