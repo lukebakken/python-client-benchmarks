@@ -43,50 +43,45 @@ def aio_pika_publish(host, port, body, count):
     loop.run_until_complete(do_publish(loop, body, count))
     loop.close()
 
+
 def aiorabbit_publish(host, port, body, count):
     import asyncio
     import aiorabbit
 
     qname = str(uuid.uuid4())
+    uri = "amqp://guest:guest@{0}:{1}/%2f".format(host, port)
 
     async def do_publish(body, count):
-        uri = "amqp://guest:guest@{0}:{1}/%2f".format(host, port)
         async with aiorabbit.connect(url=uri) as client:
             # await client.confirm_select()
             await client.queue_declare(queue=qname, auto_delete=True, exclusive=True)
             for _ in range(1, count):
-                await client.publish(exchange='', routing_key=qname, message_body=body)
+                await client.publish(exchange="", routing_key=qname, message_body=body)
 
     loop = asyncio.new_event_loop()
     loop.run_until_complete(do_publish(body, count))
     loop.close()
 
+
 def kombu_publish(host, port, body, count):
     # https://github.com/celery/kombu/blob/main/examples/complete_send.py
     from kombu import Connection, Exchange, Producer, Queue
 
+    qname = str(uuid.uuid4())
+    uri = "amqp://guest:guest@{0}:{1}/%2f".format(host, port)
+
     #: By default messages sent to exchanges are persistent (delivery_mode=2),
     #: and queues and exchanges are durable.
-    exchange = Exchange('kombu_demo', type='direct')
-    queue = Queue('kombu_demo', exchange, routing_key='kombu_demo')
+    exchange = Exchange("", type="direct")
+    _ = Queue(qname, exchange, routing_key=qname, auto_delete=True, exclusive=True)
 
-    with Connection('amqp://guest:guest@localhost:5672//') as connection:
-        #: Producers are used to publish messages.
-        #: a default exchange and routing key can also be specified
-        #: as arguments the Producer, but we rather specify this explicitly
-        #: at the publish call.
-        producer = Producer(connection)
-
-        #: Publish the message using the json serializer (which is the default),
-        #: and zlib compression.  The kombu consumer will automatically detect
-        #: encoding, serialization and compression used and decode accordingly.
-        producer.publish(
-            {'hello': 'world'},
-            exchange=exchange,
-            routing_key='kombu_demo',
-            serializer='json',
-            compression='zlib',
-        )
+    with Connection(uri) as connection:
+        producer = Producer(connection, exchange=exchange, routing_key=qname)
+        for _ in range(1, count):
+            producer.publish(
+                body, content_type="application/octet-stream", content_encoding="binary",
+                delivery_mode=1
+            )
 
 
 parser = argparse.ArgumentParser(add_help=False)
@@ -125,24 +120,22 @@ args = parser.parse_args()
 
 body = random.randbytes(args.msgsize)
 
-pika_func = functools.partial(pika_publish, args.host, args.port, body, args.msgcount)
-t = timeit.timeit(pika_func, number=1)
-print("pika: publishing {0} messages took {1} seconds".format(args.msgcount, t))
+## pika_func = functools.partial(pika_publish, args.host, args.port, body, args.msgcount)
+## t = timeit.timeit(pika_func, number=1)
+## print("pika: publishing {0} messages took {1} seconds".format(args.msgcount, t))
+##
+## aio_pika_func = functools.partial(
+##     aio_pika_publish, args.host, args.port, body, args.msgcount
+## )
+## t = timeit.timeit(aio_pika_func, number=1)
+## print("aio-pika: publishing {0} messages took {1} seconds".format(args.msgcount, t))
+##
+## aiorabbit_func = functools.partial(
+##     aiorabbit_publish, args.host, args.port, body, args.msgcount
+## )
+## t = timeit.timeit(aiorabbit_func, number=1)
+## print("aiorabbit: publishing {0} messages took {1} seconds".format(args.msgcount, t))
 
-aio_pika_func = functools.partial(
-    aio_pika_publish, args.host, args.port, body, args.msgcount
-)
-t = timeit.timeit(aio_pika_func, number=1)
-print("aio-pika: publishing {0} messages took {1} seconds".format(args.msgcount, t))
-
-aiorabbit_func = functools.partial(
-    aiorabbit_publish, args.host, args.port, body, args.msgcount
-)
-t = timeit.timeit(aiorabbit_func, number=1)
-print("aiorabbit: publishing {0} messages took {1} seconds".format(args.msgcount, t))
-
-kombu_func = functools.partial(
-    kombu_publish, args.host, args.port, body, args.msgcount
-)
+kombu_func = functools.partial(kombu_publish, args.host, args.port, body, args.msgcount)
 t = timeit.timeit(kombu_func, number=1)
 print("kombu: publishing {0} messages took {1} seconds".format(args.msgcount, t))
